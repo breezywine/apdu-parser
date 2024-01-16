@@ -70,10 +70,15 @@ Show output results in different colors in terminal (works only on Linux / MacOS
 python apdu_parser.py -i sample_files/default_log.txt -T
 ```
 
-## alternative for single line parser
+## Alternative for single line parser
+
+cmd string without space
+
 ```batch
 parseAPDU.bat 00B2011400
 ```
+
+cmd byte
 
 ```batch
 parseAPDU.bat \x00\xB2\x01\x14\x00
