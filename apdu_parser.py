@@ -1,9 +1,20 @@
+# https://github.com/eIDuy/apdu-parser
+
+
 import errno
 import optparse
 import os
 
 
 # Output colors
+DARK_RED = '\033[31m'
+DARK_GREEN = '\033[31m'
+DARK_YELLOW = '\033[31m'
+DARK_BLUE = '\033[31m'
+DARK_MAGENTA = '\033[31m'
+DARK_CYAN = '\033[31m'
+LIGHT_GRAY = '\033[31m'
+DARK_GRAY = '\033[90m'
 RED = '\033[91m'
 GREEN = '\033[92m'
 YELLOW = '\033[93m'
@@ -17,7 +28,7 @@ def parse_description_file(filename):
     try:
         f = open(filename, "r")
     except:
-        print "[*] Error while opening file: {}".format(filename)
+        print("[*] Error while opening file: {}".format(filename))
 
     lines = f.readlines()
     results = []
@@ -25,7 +36,7 @@ def parse_description_file(filename):
         for line in lines:
             results.append(line.strip().split("\t"))
     except:
-        print "[*] Error while parsing descriptions file: {}".format(filename)
+        print("[*] Error while parsing descriptions file: {}".format(filename))
 
     f.close()
     return results
@@ -33,8 +44,10 @@ def parse_description_file(filename):
 
 def parse_apdu_command(line, command_descriptions):
     command_bytes = line.strip().split(" ")
+    if len(command_bytes) == 1:
+        command_bytes = [line[i:i + 2] for i in range(0, len(line), 2)]
     command_bytes_len = len(command_bytes)
-    desc = "(NOT FOUND)"
+    desc = {}
 
     # Header: CLA | INS | P1 | P2
     cla = command_bytes[0]
@@ -58,12 +71,29 @@ def parse_apdu_command(line, command_descriptions):
         else:  # LC | DATA
             data = command_bytes[5:]
 
-    # Parse CLA (TO-DO)
-
-    # Parse IN
+    # Parse CLA
+    if int(cla) & 0b10000000:
+        desc["cla_8"] = "Global Platform command. "
+    else:
+        desc["cla_8"] = "Command defined in ISO/IEC 7816"
+    cla_b43 = int(cla) & 0b00001100
+    if   cla_b43 == 0b00000100:
+        desc["cla_43"] = "Secure messaging – GlobalPlatform proprietary"
+    elif cla_b43 == 0b00001000:
+        desc["cla_43"] = "Secure messaging – ISO/IEC 7816 standard, command header not processed (no C-MAC)"
+    elif cla_b43 == 0b00001100:
+        desc["cla_43"] = "Secure messaging – ISO/IEC 7816 standard, command header authenticated (C-MAC)"
+    else:
+        desc["cla_43"] = "No secure messaging"
+    desc["cla_21"] = "Basic Logical Channel"
+    if int(cla) & 0b00000011:
+        desc["cla_21"] = "Logical channel number: " + int(cla) & 0b00000011
+    
+    # Parse INS
+    desc["ins"] = "NOT FOUND"
     for cd in command_descriptions:
         if ins == cd[2]:  # INS
-            desc = "{} ({})".format(cd[0], cd[1])  # INS NAME (INS DESC)
+            desc["ins"] = "{} ({})".format(cd[0], cd[1])  # INS NAME (INS DESC)
             break
 
     # Parse P1, P2 (TO-DO)
@@ -75,6 +105,8 @@ def parse_apdu_command(line, command_descriptions):
 
 def parse_apdu_response(line, response_descriptions, last_apdu_command=None):
     response_bytes = line.strip().split(" ")
+    if len(response_bytes) == 1:
+        response_bytes = [line[i:i + 2] for i in range(0, len(line), 2)]
     desc = "(NOT FOUND)"
     category = None
 
@@ -94,15 +126,26 @@ def parse_apdu_response(line, response_descriptions, last_apdu_command=None):
             desc = "{} [{}]".format(rd[3], rd[2])
             category = rd[2]
             break
-
+        if sw1 == rd[0] and "XX" == rd[1]:  # SW1, SW2
+            desc = "{} [{}]".format(rd[3].replace("\\XX\\", "<" + YELLOW + sw2 + ENDC + ">"), rd[2])
+            category = rd[2]
+            break  
+        if sw1 == rd[0] and "X" == rd[1][0]:  # SW1, SW2
+            desc = "{} [{}]".format(rd[3].replace("\\x\\", "<" + YELLOW + sw2[0] + ENDC + ">"), rd[2])
+            category = rd[2]
+            break             
+        if sw1 == rd[0] and "X" == rd[1][1]:  # SW1, SW2
+            desc = "{} [{}]".format(rd[3].replace("\\x\\", "<" + YELLOW + sw2[1] + ENDC + ">"), rd[2])
+            category = rd[2]
+            break 
     return desc, category, sw1, sw2, data
     # TO-DO:
-    #   - RECOGNIZE SWs THAT INCLUDE XX VALUES
     #   - PARSE CUSTOM RESPONSE CODES DEPENDING ON LAST APDU COMMAND
 
 
 def show_apdu_command(desc, cla, ins, p1, p2, lc, le, data, colors):
-    print "{} : {}\n".format(ins, desc)  # INS : INS_NAME (INS_DESC)
+    print("{} : {}, {}, {}.\n{} : {}\n".format(cla, desc["cla_8"], desc["cla_43"], desc["cla_21"],
+                                                ins, desc["ins"]))
 
     if colors:
         cla = RED + cla + ENDC
@@ -124,11 +167,11 @@ def show_apdu_command(desc, cla, ins, p1, p2, lc, le, data, colors):
     if le is not None:
         line += " " + le
 
-    print line + "\n"
+    print(line + "\n")
 
 
 def show_apdu_response(desc, category, sw1, sw2, data, colors):
-    print "{} {} : {}\n".format(sw1, sw2, desc)  # SW1 SW2 : DESC
+    print("{} {} : {}\n".format(sw1, sw2, desc))  # SW1 SW2 : DESC
 
     if colors:
         if category == "E":  # Error
@@ -151,7 +194,7 @@ def show_apdu_response(desc, category, sw1, sw2, data, colors):
     if data is not None:
         line += " ".join(data) + " "
 
-    print line + sw1 + " " + sw2 + "\n"
+    print(line + sw1 + " " + sw2 + "\n")
 
 
 def main():
@@ -183,8 +226,8 @@ def main():
 
     # Input file
     if options.input_file is None:
-        print parser.usage
-        print
+        print(parser.usage)
+        print()
         exit(0)
     else:
         input_file = open(options.input_file, "r")
@@ -203,8 +246,8 @@ def main():
         output_file = open(options.output_file, "w")
 
     if commands_only and options.responses_only:
-        print parser.usage
-        print "[*] Error: --commands and --responses options cannot be set at the same time"
+        print(parser.usage)
+        print("[*] Error: --commands and --responses options cannot be set at the same time")
         exit(0)
 
     # Custom command descriptions
