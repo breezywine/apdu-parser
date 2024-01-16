@@ -72,11 +72,12 @@ def parse_apdu_command(line, command_descriptions):
             data = command_bytes[5:]
 
     # Parse CLA
-    if int(cla) & 0b10000000:
+    cla_hex = int(cla, 16)
+    if cla_hex & 0b10000000:
         desc["cla_8"] = "Global Platform command. "
     else:
         desc["cla_8"] = "Command defined in ISO/IEC 7816"
-    cla_b43 = int(cla) & 0b00001100
+    cla_b43 = cla_hex & 0b00001100
     if   cla_b43 == 0b00000100:
         desc["cla_43"] = "Secure messaging – GlobalPlatform proprietary"
     elif cla_b43 == 0b00001000:
@@ -86,8 +87,8 @@ def parse_apdu_command(line, command_descriptions):
     else:
         desc["cla_43"] = "No secure messaging"
     desc["cla_21"] = "Basic Logical Channel"
-    if int(cla) & 0b00000011:
-        desc["cla_21"] = "Logical channel number: " + int(cla) & 0b00000011
+    if cla_hex & 0b00000011:
+        desc["cla_21"] = "Logical channel number: " + str(cla_hex & 0b00000011)
     
     # Parse INS
     desc["ins"] = "NOT FOUND"
