@@ -70,6 +70,15 @@ Show output results in different colors in terminal (works only on Linux / MacOS
 python apdu_parser.py -i sample_files/default_log.txt -T
 ```
 
+## alternative for single line parser
+```batch
+parseAPDU.bat 00B2011400
+```
+
+```batch
+parseAPDU.bat \x00\xB2\x01\x14\x00
+```
+
 ## Requirements
 
-To properly run the apdu-parser, [Python](http://www.python.org/download/) **2.6.x** or **2.7.x** is required.
+To properly run the apdu-parser, [Python](http://www.python.org/download/) **3.x** is required.
