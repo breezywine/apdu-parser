@@ -74,7 +74,7 @@ def parse_apdu_command(line, command_descriptions):
     # Parse CLA
     cla_hex = int(cla, 16)
     if cla_hex & 0b10000000:
-        desc["cla_8"] = "Global Platform command. "
+        desc["cla_8"] = "Global Platform command"
     else:
         desc["cla_8"] = "Command defined in ISO/IEC 7816"
     cla_b43 = cla_hex & 0b00001100
